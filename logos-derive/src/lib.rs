@@ -6,31 +6,29 @@
 
 // The `quote!` macro requires deep recursion.
 #![recursion_limit = "196"]
+#![doc(html_logo_url = "https://maciej.codes/kosz/logos.png")]
 
-mod generator;
 mod error;
+mod generator;
 mod graph;
-mod util;
 mod leaf;
-mod parser;
 mod mir;
+mod parser;
+mod util;
 
 use generator::Generator;
-use graph::{Graph, Fork, Rope, DisambiguationError};
+use graph::{DisambiguationError, Fork, Graph, Rope};
 use leaf::Leaf;
-use parser::{Parser, Mode};
+use parser::{Mode, Parser};
 use util::MaybeVoid;
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::{quote, ToTokens};
-use syn::{Fields, ItemEnum};
 use syn::spanned::Spanned;
+use syn::{Fields, ItemEnum};
 
-#[proc_macro_derive(
-    Logos,
-    attributes(logos, extras, error, end, token, regex)
-)]
+#[proc_macro_derive(Logos, attributes(logos, extras, error, end, token, regex))]
 pub fn logos(input: TokenStream) -> TokenStream {
     let mut item: ItemEnum = syn::parse(input).expect("Logos can be only be derived for enums");
 
@@ -85,11 +83,15 @@ pub fn logos(input: TokenStream) -> TokenStream {
                             "Logos currently only supports variants with one field, found {}",
                             fields.unnamed.len(),
                         ),
-                        fields.span()
+                        fields.span(),
                     );
                 }
 
-                let ty = &mut fields.unnamed.first_mut().expect("Already checked len; qed").ty;
+                let ty = &mut fields
+                    .unnamed
+                    .first_mut()
+                    .expect("Already checked len; qed")
+                    .ty;
                 let ty = parser.get_type(ty);
 
                 MaybeVoid::Some(ty)
@@ -119,7 +121,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                             .err("Only one #[error] variant can be declared.", span)
                             .err("Previously declared #[error]:", previous.span());
                     }
-                },
+                }
                 "end" => {
                     // TODO: Remove in future versions
                     parser.err(
@@ -131,7 +133,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
                         ",
                         attr.span(),
                     );
-                },
+                }
                 "token" => {
                     let definition = match parser.parse_definition(attr) {
                         Some(definition) => definition,
@@ -145,35 +147,38 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     let then = graph.push(
                         leaf(definition.literal.span())
                             .priority(definition.priority.unwrap_or(bytes.len() * 2))
-                            .callback(definition.callback)
+                            .callback(definition.callback),
                     );
 
                     ropes.push(Rope::new(bytes, then));
-                },
+                }
                 "regex" => {
                     let definition = match parser.parse_definition(attr) {
                         Some(definition) => definition,
                         None => {
                             parser.err("Expected #[regex(...)]", attr.span());
                             continue;
-                        },
+                        }
                     };
-                    let mir = match definition.literal.to_mir() {
+                    let mir = match definition
+                        .literal
+                        .to_mir(&parser.subpatterns, &mut parser.errors)
+                    {
                         Ok(mir) => mir,
                         Err(err) => {
                             parser.err(err, definition.literal.span());
                             continue;
-                        },
+                        }
                     };
                     let then = graph.push(
                         leaf(definition.literal.span())
                             .priority(definition.priority.unwrap_or_else(|| mir.priority()))
-                            .callback(definition.callback)
+                            .callback(definition.callback),
                     );
                     let id = graph.regex(mir, then);
 
                     regex_ids.push(id);
-                },
+                }
                 _ => (),
             }
         }
@@ -192,7 +197,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
         None => {
             parser.err("missing #[error] token variant.", Span::call_site());
             None
-        },
+        }
     };
 
     let generics = parser.generics();
@@ -285,7 +290,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
         fn _error<'s>(lex: &mut Lexer<'s>) {
             lex.bump_unchecked(1);
 
-            lex.set(#name::#error);
+            lex.error();
         }
 
         #body

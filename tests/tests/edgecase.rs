@@ -335,6 +335,9 @@ mod colors {
 mod type_params {
     use logos::Logos;
 
+    #[derive(Debug, PartialEq)]
+    struct Nested<S>(S);
+
     #[derive(Logos, Debug, PartialEq)]
     #[logos(
         type S = &str,
@@ -349,7 +352,10 @@ mod type_params {
         Ident(S),
 
         #[regex("[0-9]+", priority = 10, callback = |lex| lex.slice().parse())]
-        Number(N)
+        Number(N),
+
+        #[regex("nested", |lex| Nested(lex.slice()))]
+        Nested(Nested<S>),
     }
 
     #[test]
@@ -426,5 +432,107 @@ mod priority_disambiguate_2 {
                 Token::Cde,
             ]
         );
+    }
+}
+
+mod loop_in_loop {
+    use super::*;
+
+    #[derive(Logos, Debug, PartialEq)]
+    pub enum Token {
+        #[error]
+        #[regex(r"[ \t\n\f]+", logos::skip)]
+        Error,
+
+        #[regex("f(f*oo)*")]
+        Foo,
+    }
+
+    #[test]
+    fn test_a_loop_in_a_loop() {
+        assert_lex(
+            "foo ffoo ffffooffoooo foooo foofffffoo",
+            &[
+                (Token::Foo, "foo", 0..3),
+                (Token::Foo, "ffoo", 4..8),
+                (Token::Foo, "ffffooffoooo", 9..21),
+                (Token::Foo, "foooo", 22..27),
+                (Token::Foo, "foofffffoo", 28..38),
+            ],
+        );
+    }
+}
+
+mod maybe_in_loop {
+    use super::*;
+
+    #[derive(Logos, Debug, PartialEq)]
+    pub enum Token {
+        #[error]
+        #[regex(r"[ \t\n\f]+", logos::skip)]
+        Error,
+
+        #[regex("f(f?oo)*")]
+        Foo,
+    }
+
+    #[test]
+    fn test_maybe_in_a_loop() {
+        assert_lex(
+            "foo ff ffoo foofoo foooofoo foooo",
+            &[
+                (Token::Foo, "foo", 0..3),
+                (Token::Foo, "f", 4..5),
+                (Token::Foo, "f", 5..6),
+                (Token::Foo, "ffoo", 7..11),
+                (Token::Foo, "foofoo", 12..18),
+                (Token::Foo, "foooofoo", 19..27),
+                (Token::Foo, "foooo", 28..33),
+            ],
+        );
+    }
+}
+
+mod unicode_error_split {
+    use super::*;
+
+    #[test]
+    fn test() {
+        use logos::Logos;
+
+        #[derive(Logos, Debug, PartialEq)]
+        enum Test {
+            #[token("a")]
+            A,
+
+            #[error]
+            Error,
+        }
+
+        let mut lex = Test::lexer("💩");
+        let _ = lex.next();
+        let bytes = lex.slice().as_bytes();
+        println!("bytes: {:?}", bytes);
+
+        let s = std::str::from_utf8(bytes).unwrap();
+        assert_eq!(s, "💩");
+        assert_eq!(lex.span(), 0..4);
+    }
+}
+
+mod merging_asymmetric_loops {
+    use logos::Logos;
+
+    #[test]
+    fn must_compile() {
+        #[derive(Logos)]
+        pub enum Token2 {
+            #[regex(r#"[!#$%&*+-./<=>?@\\^|~:]+"#)]
+            Operator,
+
+            #[regex(r"/([^*]*[*]+[^*/])*([^*]*[*]+|[^*])*", logos::skip)]
+            #[error]
+            Error,
+        }
     }
 }
