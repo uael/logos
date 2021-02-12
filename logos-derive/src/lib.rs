@@ -19,7 +19,7 @@ mod util;
 use generator::Generator;
 use graph::{DisambiguationError, Fork, Graph, Rope};
 use leaf::Leaf;
-use parser::{Mode, Parser};
+use parser::{Flags, Mode, Parser};
 use util::MaybeVoid;
 
 use proc_macro::TokenStream;
@@ -283,6 +283,12 @@ pub fn logos(input: TokenStream) -> TokenStream {
 
     graph.shake(root);
 
+    let end_body = if parser.flags.contains(Flags::EarlyExit)  {
+        quote!(lex.error())
+    } else {
+        quote!(lex.end())
+    };
+
     // panic!("{:#?}\n\n{} nodes", graph, graph.nodes().iter().filter_map(|n| n.as_ref()).count());
 
     let generator = Generator::new(name, &this, root, &graph);
@@ -294,7 +300,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
         type Lexer<'s> = ::logos::Lexer<'s, #this>;
 
         fn _end<'s>(lex: &mut Lexer<'s>) {
-            lex.end()
+            #end_body
         }
 
         fn _error<'s>(lex: &mut Lexer<'s>) {

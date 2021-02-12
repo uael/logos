@@ -9,12 +9,14 @@ use crate::leaf::{Callback, InlineCallback};
 use crate::util::{expect_punct, MaybeVoid};
 
 mod definition;
+mod flags;
 mod ignore_flags;
 mod nested;
 mod subpattern;
 mod type_params;
 
 pub use self::definition::{Definition, Literal};
+pub use self::flags::Flags;
 pub use self::ignore_flags::IgnoreFlags;
 use self::nested::{AttributeParser, Nested, NestedValue};
 pub use self::subpattern::Subpatterns;
@@ -26,6 +28,7 @@ pub struct Parser {
     pub mode: Mode,
     pub extras: MaybeVoid,
     pub subpatterns: Subpatterns,
+    pub flags: Flags,
     types: TypeParams,
 }
 
@@ -127,6 +130,14 @@ impl Parser {
                 }
                 ("subpattern", _) => {
                     self.err(r#"Expected: subpattern name = r"regex""#, name.span());
+                }
+                ("flags", NestedValue::Group(tokens)) => {
+                    let mut flags = self.flags;
+                    flags.parse_group(name, tokens, self);
+                    self.flags = flags;
+                }
+                ("flags", _) => {
+                    self.err("Expected: flags(<flag>, ...)", name.span());
                 }
                 (unknown, _) => {
                     self.err(
