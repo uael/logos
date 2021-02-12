@@ -297,6 +297,12 @@ pub enum Filter<T> {
     Skip,
 }
 
+pub enum Term {
+    None,
+    Inclusive,
+    Exclusive
+}
+
 /// Predefined callback that will inform the `Lexer` to skip a definition.
 ///
 /// # Example
@@ -328,6 +334,16 @@ pub enum Filter<T> {
 #[inline]
 pub fn skip<'source, Token: Logos<'source>>(_: &mut Lexer<'source, Token>) -> Skip {
     Skip
+}
+
+#[inline]
+pub fn inclusive_end<'source, Token: Logos<'source>>(_: &mut Lexer<'source, Token>) -> Term {
+    Term::Inclusive
+}
+
+#[inline]
+pub fn exclusive_end<'source, Token: Logos<'source>>(_: &mut Lexer<'source, Token>) -> Term {
+    Term::Exclusive
 }
 
 #[cfg(doctest)]
