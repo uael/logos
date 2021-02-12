@@ -137,7 +137,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
                         let then = graph.push(
                             leaf(definition.literal.span())
                                 .priority(definition.priority.unwrap_or(bytes.len() * 2))
-                                .callback(definition.callback),
+                                .callback(definition.callback)
+                                .sublexer(definition.sublexer),
                         );
 
                         ropes.push(Rope::new(bytes, then));
@@ -155,7 +156,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
                         let then = graph.push(
                             leaf(definition.literal.span())
                                 .priority(definition.priority.unwrap_or_else(|| mir.priority()))
-                                .callback(definition.callback),
+                                .callback(definition.callback)
+                                .sublexer(definition.sublexer),
                         );
                         let id = graph.regex(mir, then);
 
@@ -185,7 +187,8 @@ pub fn logos(input: TokenStream) -> TokenStream {
                     let then = graph.push(
                         leaf(definition.literal.span())
                             .priority(definition.priority.unwrap_or_else(|| mir.priority()))
-                            .callback(definition.callback),
+                            .callback(definition.callback)
+                            .sublexer(definition.sublexer),
                     );
                     let id = graph.regex(mir, then);
 

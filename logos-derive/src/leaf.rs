@@ -14,6 +14,7 @@ pub struct Leaf<'t> {
     pub priority: usize,
     pub field: MaybeVoid,
     pub callback: Option<Callback>,
+    pub sublexer: Option<TokenStream>,
 }
 
 #[derive(Clone)]
@@ -52,6 +53,7 @@ impl<'t> Leaf<'t> {
             priority: 0,
             field: MaybeVoid::Void,
             callback: None,
+            sublexer: None,
         }
     }
 
@@ -67,6 +69,11 @@ impl<'t> Leaf<'t> {
 
     pub fn priority(mut self, priority: usize) -> Self {
         self.priority = priority;
+        self
+    }
+
+    pub fn sublexer(mut self, sublexer: Option<TokenStream>) -> Self {
+        self.sublexer = sublexer;
         self
     }
 }

@@ -19,9 +19,29 @@ impl<'a> Generator<'a> {
             MaybeVoid::Void => quote!(|()| #name::#ident),
         };
 
+        let sublexer = match &leaf.sublexer {
+            None => quote!(),
+            Some(ty) => quote! {
+                let mut sublexer = #ty::lexer(lex.source());
+                sublexer.bump_unchecked(lex.span().end);
+                sublexer.trivia();
+
+                while let Some(token) = sublexer.next() {
+                    if token == #ty::ERROR {
+                        lex.goto(sublexer.span());
+                        lex.error();
+                        return;
+                    }
+                }
+
+                lex.bump_unchecked(sublexer.span().end - lex.span().end);
+            }
+        };
+
         match &leaf.callback {
             Some(Callback::Label(callback)) => quote! {
                 #bump
+                #sublexer
                 #callback(lex).construct(#constructor, lex);
             },
             Some(Callback::Inline(inline)) => {
@@ -30,6 +50,7 @@ impl<'a> Generator<'a> {
 
                 quote! {
                     #bump
+                    #sublexer
 
                     #[inline]
                     fn callback<'s>(#arg: &mut Lexer<'s>) -> impl CallbackResult<'s, #ty, #this> {
@@ -41,10 +62,12 @@ impl<'a> Generator<'a> {
             }
             None if matches!(leaf.field, MaybeVoid::Void) => quote! {
                 #bump
+                #sublexer
                 lex.set(#name::#ident);
             },
             None => quote! {
                 #bump
+                #sublexer
                 let token = #name::#ident(lex.slice());
                 lex.set(token);
             },

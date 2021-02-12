@@ -28,6 +28,11 @@ pub trait LexerInternal<'source> {
     /// Bump the position by `size`.
     fn bump_unchecked(&mut self, size: usize);
 
+    /// Rewind `token_end` to `token_start`.
+    fn rewind(&mut self);
+
+    fn goto(&mut self, span: Span);
+
     /// Reset `token_start` to `token_end`.
     fn trivia(&mut self);
 

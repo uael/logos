@@ -1,4 +1,4 @@
-use proc_macro2::{Ident, Span};
+use proc_macro2::{Ident, Span, TokenStream};
 use syn::{spanned::Spanned, LitByteStr, LitStr};
 
 use crate::error::{Errors, Result};
@@ -14,6 +14,7 @@ pub struct Definition {
     pub priority: Option<usize>,
     pub callback: Option<Callback>,
     pub ignore_flags: IgnoreFlags,
+    pub sublexer: Option<TokenStream>,
 }
 
 pub enum Literal {
@@ -28,6 +29,7 @@ impl Definition {
             priority: None,
             callback: None,
             ignore_flags: IgnoreFlags::Empty,
+            sublexer: None,
         }
     }
 
@@ -76,6 +78,14 @@ impl Definition {
             }
             ("ignore", _) => {
                 parser.err("Expected: ignore(<flag>, ...)", name.span());
+            }
+            ("sublexer", NestedValue::Assign(value)) => {
+                if self.sublexer.replace(value.clone()).is_some() {
+                    parser.err("Resetting previously set sublexer", value.span());
+                }
+            }
+            ("sublexer", _) => {
+                parser.err("Expected: sublexer = <TokenType>", name.span());
             }
             (unknown, _) => {
                 parser.err(

@@ -278,6 +278,19 @@ where
         self.token_end += size;
     }
 
+    /// Rewind `token_end` to `token_start`.
+    #[inline]
+    fn rewind(&mut self) {
+        self.token_end = self.token_start;
+    }
+
+    /// Rewind `token_end` to `token_start`.
+    #[inline]
+    fn goto(&mut self, span: Span) {
+        self.token_start = span.start;
+        self.token_end = span.end;
+    }
+
     /// Reset `token_start` to `token_end`.
     #[inline]
     fn trivia(&mut self) {
