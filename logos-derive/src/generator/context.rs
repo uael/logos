@@ -1,8 +1,8 @@
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{quote, TokenStreamExt};
 
 use crate::generator::Generator;
-use crate::graph::NodeId;
+use crate::graph::{NodeId, Range};
 
 /// This struct keeps track of bytes available to be read without
 /// bounds checking across the tree.
@@ -100,13 +100,25 @@ impl Context {
         }
     }
 
-    pub fn miss(mut self, miss: Option<NodeId>, gen: &mut Generator) -> TokenStream {
+    pub fn miss(mut self, miss: Option<NodeId>, gen: &mut Generator, e: Vec<Range>) -> TokenStream {
+        let expected: Vec<TokenStream> = e
+            .iter()
+            .map(|range| syn::parse_str(&format!("{:?}", format!("{:?}", range))).unwrap())
+            .collect::<Vec<_>>();
+        let count = expected.len();
+
         self.wipe();
         match (miss, self.backtrack) {
             (Some(id), _) => gen.goto(id, self).clone(),
             (_, Some(id)) => gen.goto(id, self.backtrack()).clone(),
-            _ if self.bumped => quote!(lex.error()),
-            _ => quote!(_error(lex)),
+            _ if self.bumped => quote!({
+                const expected: &'static [&'static str; #count] = &[#(#expected,)*];
+                lex.error(expected);
+            }),
+            _ => quote!({
+                const expected: &'static [&'static str; #count] = &[#(#expected,)*];
+                _error(lex, expected);
+            }),
         }
     }
 

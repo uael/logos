@@ -6,7 +6,7 @@ use crate::graph::Rope;
 
 impl<'a> Generator<'a> {
     pub fn generate_rope(&mut self, rope: &Rope, mut ctx: Context) -> TokenStream {
-        let miss = ctx.miss(rope.miss.first(), self);
+        let miss = ctx.miss(rope.miss.first(), self, rope.pattern.0.clone());
         let read = ctx.read(rope.pattern.len());
         let then = self.goto(rope.then, ctx.advance(rope.pattern.len()));
 

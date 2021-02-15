@@ -24,7 +24,7 @@ impl<'a> Generator<'a> {
             0..=2 => (),
             _ => return self.generate_fork_jump_table(this, fork, targets, ctx),
         }
-        let miss = ctx.miss(fork.miss, self);
+        let miss = ctx.miss(fork.miss, self, targets.values().cloned().fold(vec![], |mut r, ranges| { r.extend(ranges); r }));
         let end = self.fork_end(this, &miss);
         let (byte, read) = self.fork_read(this, end, &mut ctx);
         let branches = targets.into_iter().map(|(id, ranges)| {
@@ -63,7 +63,7 @@ impl<'a> Generator<'a> {
         targets: Targets,
         mut ctx: Context,
     ) -> TokenStream {
-        let miss = ctx.miss(fork.miss, self);
+        let miss = ctx.miss(fork.miss, self, targets.values().cloned().fold(vec![], |mut r, ranges| { r.extend(ranges); r }));
         let end = self.fork_end(this, &miss);
         let (byte, read) = self.fork_read(this, end, &mut ctx);
 
@@ -163,8 +163,8 @@ impl<'a> Generator<'a> {
     }
 
     fn generate_fast_loop(&mut self, fork: &Fork, ctx: Context) -> TokenStream {
-        let miss = ctx.miss(fork.miss, self);
         let ranges = fork.branches().map(|(range, _)| range).collect::<Vec<_>>();
+        let miss = ctx.miss(fork.miss, self, ranges.clone());
         let test = self.generate_test(ranges);
 
         quote! {

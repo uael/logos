@@ -67,20 +67,19 @@ mod debug {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             let Range { start, end } = *self;
 
-            if start != end || !is_ascii(start) {
-                f.write_str("[")?;
-            }
-            match is_ascii(start) {
-                true => write!(f, "{}", start as char),
-                false => write!(f, "{:02X}", start),
-            }?;
             if start != end {
-                match is_ascii(end) {
-                    true => write!(f, "-{}]", end as char),
-                    false => write!(f, "-{:02X}]", end),
-                }?;
-            } else if !is_ascii(start) {
-                f.write_str("]")?;
+                f.write_str("[")?;
+            } else {
+                f.write_str("'")?;
+            }
+            let s = format!("{:?}", start as char);
+            write!(f, "{}", &s[1..s.len() - 1])?;
+            if start != end {
+                let s = format!("{:?}", end as char);
+                write!(f, "-{}]", &s[1..s.len() - 1])?;
+            }
+            if start == end {
+                f.write_str("'")?;
             }
             Ok(())
         }

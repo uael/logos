@@ -29,7 +29,7 @@ impl<'a> Generator<'a> {
                 while let Some(token) = sublexer.next() {
                     if token == #ty::ERROR {
                         lex.goto(sublexer.span());
-                        lex.error();
+                        lex.error(&[]);
                         return;
                     }
                 }

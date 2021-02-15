@@ -38,7 +38,7 @@ pub trait LexerInternal<'source> {
 
     /// Set the current token to appropriate `#[error]` variant.
     /// Guarantee that `token_end` is at char boundary for `&str`.
-    fn error(&mut self);
+    fn error(&mut self, expected: &'static [&'static str]);
 
     fn end(&mut self);
 

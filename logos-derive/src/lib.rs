@@ -287,7 +287,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
     graph.shake(root);
 
     let end_body = if parser.flags.contains(Flags::EarlyExit)  {
-        quote!(lex.error())
+        quote!(lex.error(&[]))
     } else {
         quote!(lex.end())
     };
@@ -306,10 +306,10 @@ pub fn logos(input: TokenStream) -> TokenStream {
             #end_body
         }
 
-        fn _error<'s>(lex: &mut Lexer<'s>) {
+        fn _error<'s>(lex: &mut Lexer<'s>, expected: &'static [&'static str]) {
             lex.bump_unchecked(1);
 
-            lex.error();
+            lex.error(expected);
         }
 
         #body
