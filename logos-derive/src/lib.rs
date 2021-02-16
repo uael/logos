@@ -295,6 +295,7 @@ pub fn logos(input: TokenStream) -> TokenStream {
     // panic!("{:#?}\n\n{} nodes", graph, graph.nodes().iter().filter_map(|n| n.as_ref()).count());
 
     let generator = Generator::new(name, &this, root, &graph);
+    let groups = graph.groups.iter().filter(|x| x.len() > 0).count() / 2;
 
     let body = generator.generate();
     let tokens = impl_logos(quote! {
@@ -312,7 +313,13 @@ pub fn logos(input: TokenStream) -> TokenStream {
             lex.error(expected);
         }
 
-        #body
+        fn _lex<'s>(lex: &mut Lexer<'s>, groups: &mut [(usize, usize); #groups]) {
+            #body
+        }
+
+        let mut groups = [(0usize, 0usize); #groups];
+        _lex(lex, &mut groups);
+        println!("{:?}", groups);
     });
 
     // panic!("{}", tokens);

@@ -15,7 +15,7 @@ use crate::graph::{NodeId, Range};
 pub struct Context {
     /// Amount of bytes that haven't been bumped yet but should
     /// before a new read is performed
-    at: usize,
+    pub at: usize,
     /// Number of bytes available without bound checks
     available: usize,
     /// Whether or not the Lexer has been bumped at least by 1 byte

@@ -2,12 +2,15 @@ use std::fmt::Debug;
 
 use utf8_ranges::Utf8Sequences;
 
-use crate::graph::{Disambiguate, Fork, Graph, Node, NodeId, Range, ReservedId, Rope};
+use crate::graph::{Disambiguate, Fork, Graph, Node, NodeId, Range, ReservedId, Rope, Group};
 use crate::mir::{Class, ClassUnicode, Literal, Mir};
 
 impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
     pub fn regex(&mut self, mir: Mir, then: NodeId) -> NodeId {
-        self.parse_mir(mir, then, None, None)
+        let mut group = 0;
+        let id = self.parse_mir(mir, then, None, None, &mut group);
+        println!("{:?}", self);
+        id
     }
 
     fn parse_mir(
@@ -16,6 +19,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
         then: NodeId,
         miss: Option<NodeId>,
         reserved: Option<ReservedId>,
+        group: &mut u32,
     ) -> NodeId {
         match mir {
             Mir::Empty => then,
@@ -29,7 +33,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     None => self.reserve(),
                 };
 
-                self.parse_mir(*mir, this.get(), Some(miss), Some(this))
+                self.parse_mir(*mir, this.get(), Some(miss), Some(this), group)
             }
             Mir::Maybe(mir) => {
                 let miss = match miss {
@@ -37,13 +41,13 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
                     None => then,
                 };
 
-                self.parse_mir(*mir, then, Some(miss), reserved)
+                self.parse_mir(*mir, then, Some(miss), reserved, group)
             }
             Mir::Alternation(alternation) => {
                 let mut fork = Fork::new().miss(miss);
 
                 for mir in alternation {
-                    let id = self.parse_mir(mir, then, None, None);
+                    let id = self.parse_mir(mir, then, None, None, group);
                     let alt = self.fork_off(id);
 
                     fork.merge(alt, self);
@@ -107,7 +111,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
 
                 for mir in concat.drain(1..).rev() {
                     if let Some(mir) = handle_bytes(self, mir, &mut then) {
-                        then = self.parse_mir(mir, then, None, None);
+                        then = self.parse_mir(mir, then, None, None, group);
                     }
                 }
 
@@ -117,7 +121,7 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
 
                         self.insert_or_push(reserved, rope)
                     }
-                    Some(mir) => self.parse_mir(mir, then, miss, reserved),
+                    Some(mir) => self.parse_mir(mir, then, miss, reserved, group),
                 }
             }
             Mir::Class(Class::Unicode(class)) if !is_ascii(&class) => {
@@ -156,6 +160,15 @@ impl<Leaf: Disambiguate + Debug> Graph<Leaf> {
 
                 self.insert_or_push(reserved, fork)
             }
+            Mir::Group(mir) => {
+                *group += 1;
+                let id = self.parse_mir(*mir.clone(), then, miss, reserved, group);
+                self.groups[id.get()].push(Group::Start(*group));
+                self.groups[then.get()].push(Group::End(*group));
+
+                println!("({:?} => {:?}): {:?}", self.get(id), self.get(then), mir);
+                id
+            },
         }
     }
 

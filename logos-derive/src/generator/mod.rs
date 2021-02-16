@@ -3,7 +3,7 @@ use proc_macro2::TokenStream;
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::Ident;
 
-use crate::graph::{Graph, Meta, Node, NodeId, Range};
+use crate::graph::{Graph, Meta, Node, NodeId, Range, Group};
 use crate::leaf::Leaf;
 use crate::util::ToIdent;
 
@@ -86,15 +86,38 @@ impl<'a> Generator<'a> {
         }
         self.fns.insert((id, ctx));
 
+        let offset = ctx.at;
+        let mut group = quote!();
+        for g in &self.graph.groups[id.get()] {
+            group = match g {
+                Group::Start(x) => {
+                    let x = *x as usize - 1;
+                    quote!{
+                        groups[#x].0 = lex.span().end + #offset;
+                        #group
+                    }
+                },
+                Group::End(x) => {
+                    let x = *x as usize - 1;
+                    quote!{
+                        groups[#x].1 = lex.span().end + #offset;
+                        #group
+                    }
+                }
+            };
+        }
+
         let body = match &self.graph[id] {
             Node::Fork(fork) => self.generate_fork(id, fork, ctx),
             Node::Rope(rope) => self.generate_rope(rope, ctx),
             Node::Leaf(leaf) => self.generate_leaf(leaf, ctx),
         };
+        let groups = self.graph.groups.iter().filter(|x| x.len() > 0).count() / 2;
         let ident = self.generate_ident(id, ctx);
         let out = quote! {
             #[inline]
-            fn #ident<'s>(lex: &mut Lexer<'s>) {
+            fn #ident<'s>(lex: &mut Lexer<'s>, groups: &mut [(usize, usize); #groups]) {
+                #group
                 #body
             }
         };
@@ -127,7 +150,7 @@ impl<'a> Generator<'a> {
             }
 
             let ident = self.generate_ident(id, ctx);
-            let mut call_site = quote!(#ident(lex));
+            let mut call_site = quote!(#ident(lex, groups));
 
             if let Some(bump) = bump {
                 call_site = quote!({

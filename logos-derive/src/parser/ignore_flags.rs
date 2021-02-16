@@ -361,6 +361,7 @@ pub mod ascii_case {
                 ),
                 Mir::Class(c) => c.make_ascii_case_insensitive(),
                 Mir::Literal(l) => l.make_ascii_case_insensitive(),
+                Mir::Group(g) => Mir::Group(Box::new(g.make_ascii_case_insensitive())),
             }
         }
     }

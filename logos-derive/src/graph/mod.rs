@@ -24,6 +24,12 @@ pub use self::rope::Rope;
 #[derive(Debug)]
 pub struct DisambiguationError(pub NodeId, pub NodeId);
 
+#[derive(Debug, Copy, Clone)]
+pub enum Group {
+    Start(u32),
+    End(u32),
+}
+
 pub struct Graph<Leaf> {
     /// Internal storage of all allocated nodes. Once a node is
     /// put here, it should never be mutated.
@@ -43,11 +49,13 @@ pub struct Graph<Leaf> {
     /// Instead of handling errors over return types, opt to collect
     /// them internally.
     errors: Vec<DisambiguationError>,
-    /// Deferred merges. When when attempting to merge a node with an
+    /// Deferred merges. When attempting to merge a node with an
     /// empty reserved slot, the merging operation is deferred until
     /// the reserved slot is populated. This is a stack that keeps track
     /// of all such deferred merges
     deferred: Vec<DeferredMerge>,
+    /// Keep tracks of all groups
+    pub groups: Vec<Vec<Group>>
 }
 
 /// Trait to be implemented on `Leaf` nodes in order to disambiguate
@@ -62,7 +70,7 @@ pub trait Disambiguate {
 pub struct NodeId(NonZeroU32);
 
 impl NodeId {
-    fn get(self) -> usize {
+    pub fn get(self) -> usize {
         self.0.get() as usize
     }
 
@@ -126,6 +134,7 @@ impl<Leaf> Graph<Leaf> {
             hashes: Map::new(),
             errors: Vec::new(),
             deferred: Vec::new(),
+            groups: vec![vec![]],
         }
     }
 
@@ -144,6 +153,7 @@ impl<Leaf> Graph<Leaf> {
         let id = self.next_id();
 
         self.nodes.push(None);
+        self.groups.push(vec![]);
 
         ReservedId(id)
     }
@@ -222,6 +232,7 @@ impl<Leaf> Graph<Leaf> {
         let id = self.next_id();
 
         self.nodes.push(Some(node));
+        self.groups.push(vec![]);
 
         id
     }
@@ -245,6 +256,10 @@ impl<Leaf> Graph<Leaf> {
         self.merges.insert(Merge::new(a, b), product);
         self.merges.insert(Merge::new(a, product), product);
         self.merges.insert(Merge::new(b, product), product);
+
+        let mut groups = self.groups[a.get()].drain(..).collect::<Vec<_>>();
+        groups.extend(self.groups[b.get()].drain(..).collect::<Vec<_>>());
+        self.groups[product.get()].extend(groups);
     }
 
     /// Merge the nodes at id `a` and `b`, returning a new id.

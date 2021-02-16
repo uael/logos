@@ -20,6 +20,7 @@ pub enum Mir {
     Alternation(Vec<Mir>),
     Class(Class),
     Literal(Literal),
+    Group(Box<Mir>),
 }
 
 impl Mir {
@@ -64,6 +65,7 @@ impl Mir {
             Mir::Alternation(alt) => alt.iter().map(Mir::priority).min().unwrap_or(0),
             Mir::Class(_) => 1,
             Mir::Literal(_) => 2,
+            Mir::Group(group) => group.priority(),
         }
     }
 }
@@ -123,7 +125,7 @@ impl TryFrom<Hir> for Mir {
                     }
                 }
             }
-            HirKind::Group(group) => Mir::try_from(*group.hir),
+            HirKind::Group(group) => Ok(Mir::Group(Box::new(Mir::try_from(*group.hir)?))),
             HirKind::WordBoundary(_) => {
                 Err("#[regex]: word boundaries are currently unsupported.".into())
             }

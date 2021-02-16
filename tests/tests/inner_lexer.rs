@@ -7,38 +7,13 @@ enum Strings {
     #[error]
     Error,
 
-    #[token("\"", sublexer = StringLiteral)]
-    String,
-
-    #[regex(r"\p{White_Space}+")]
-    WhiteSpace,
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Logos)]
-#[logos(flags(early_exit))]
-enum StringLiteral {
-    #[error]
-    Error,
-
-    #[regex(r#"[^\\"]+"#)]
-    Text,
-
-    #[token("\\n")]
-    EscapedNewline,
-
-    #[regex(r"\\u\{[^}]*\}")]
-    EscapedCodepoint,
-
-    #[token(r#"\""#)]
-    EscapedQuote,
-
-    #[token("\"", logos::inclusive_end)]
-    EndString,
+    #[regex(r"(foo) (yolo)")]
+    Yolo,
 }
 
 #[test]
 fn main() {
-    let s = r#""Hello W\u{00f4}rld\n"  "yolo" " a \" b ""#;
+    let s = r#"foo yolo"#;
     let mut outer = Strings::lexer(s);
 
     while let Some(token) = outer.next() {
